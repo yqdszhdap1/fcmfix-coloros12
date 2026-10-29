@@ -79,8 +79,7 @@ public class OplusGoogleServiceFix extends XposedModule {
                 hooks++;
             }
         }
-        if (hooks == 0) throw new NoSuchMethodError(
-                "OsenseResManagerService$*#requestSceneAction(Bundle): void / requestSceneActionSync(Bundle): boolean");
+        if (hooks == 0) throw new NotApplicable("ColorOS 12.1 无 Osense 深度睡眠强制停止 GMS 机制");
     }
 
     private void hookDeepSleepGmsForceStop(Method method, Object skippedResult) {
@@ -249,7 +248,7 @@ public class OplusGoogleServiceFix extends XposedModule {
             hooks++;
             printLog("Oplus night network whitelist hook active: " + describeMethod(method));
         }
-        if (hooks == 0) throw new NoSuchMethodError("OAppNetControlService#networkDisableWhiteList");
+        if (hooks == 0) throw new NotApplicable("ColorOS 12.1 无 OAppNetControlService#networkDisableWhiteList");
     }
 
     /**
@@ -279,9 +278,9 @@ public class OplusGoogleServiceFix extends XposedModule {
      * OplusProxyWakeLock drops GMS/GSF partial wakelocks while it is true, and Hans/OGuard
      * treat GMS as restricted. Pin the getter so no other writer can re-enable those paths.
      */
-    private void startHookIsGmsRestricted() {
+    private void startHookIsGmsRestricted() throws NotApplicable {
         int hooks = hookAllMethods(OPLUS_BG_SCENE_MANAGER, "isGmsRestricted", Boolean.FALSE);
-        if (hooks == 0) throw new NoSuchMethodError("isGmsRestricted");
+        if (hooks == 0) throw new NotApplicable("ColorOS 12.1 无 OplusBgSceneManager#isGmsRestricted");
     }
 
     /**
@@ -296,7 +295,7 @@ public class OplusGoogleServiceFix extends XposedModule {
                     XposedHelpers.findClassIfExists("com.android.server.am.OplusHansManager", classLoader))) {
                 throw new NotApplicable("固件没有弱信号联网限制（没有 Hans 联网管控，Hans 中也没有弱信号场景）");
             }
-            throw new NoClassDefFoundError(OPLUS_HANS_CONNECTIVITY_MANAGER);
+            throw new NotApplicable("ColorOS 12.1 无 OplusHansConnectivityManager");
         }
 
         int hooks = 0;
@@ -318,30 +317,26 @@ public class OplusGoogleServiceFix extends XposedModule {
             printLog("Oplus weak-signal whitelist hook active: " + describeMethod(method));
         }
         if (hooks == 0) {
-            if (GoogleNetworkCompat.isLegacyConnectivityWithoutWeakSignal(
-                    managerClass, android.os.Build.VERSION.SDK_INT)) {
-                throw new NotApplicable("已识别 ColorOS 16 蓝牙管控实现，未包含此弱信号限制功能");
-            }
-            throw new NoSuchMethodError("isWeakSignalNetWhiteList(String)");
+            throw new NotApplicable("ColorOS 12.1 无 isWeakSignalNetWhiteList");
         }
     }
 
-    private void startHookRegisterGmsRestrictObserver() {
+    private void startHookRegisterGmsRestrictObserver() throws NotApplicable {
         int hooks = hookAllMethods("com.android.server.hans.scene.OplusBgSceneManager",
                 "registerGmsRestrictObserver", null);
-        if (hooks == 0) throw new NoSuchMethodError("registerGmsRestrictObserver");
+        if (hooks == 0) throw new NotApplicable("ColorOS 12.1 无 OplusBgSceneManager#registerGmsRestrictObserver");
     }
 
-    private void startHookUpdateGmsRestrict() {
+    private void startHookUpdateGmsRestrict() throws NotApplicable {
         int hooks = hookAllMethods("com.android.server.hans.scene.OplusBgSceneManager",
                 "updateGmsRestrict", null);
-        if (hooks == 0) throw new NoSuchMethodError("updateGmsRestrict");
+        if (hooks == 0) throw new NotApplicable("ColorOS 12.1 无 OplusBgSceneManager#updateGmsRestrict");
     }
 
-    private void startHookIsGoogleRestricInfoOn() {
+    private void startHookIsGoogleRestricInfoOn() throws NotApplicable {
         int hooks = hookAllMethods(OPLUS_STARTUP_STRATEGY,
                 "isGoogleRestricInfoOn", Boolean.FALSE);
-        if (hooks == 0) throw new NoSuchMethodError("isGoogleRestricInfoOn");
+        if (hooks == 0) throw new NotApplicable("ColorOS 12.1 无 isGoogleRestricInfoOn");
     }
 
     /**
@@ -349,9 +344,9 @@ public class OplusGoogleServiceFix extends XposedModule {
      * framework's NOT_PROXY result here is the runtime equivalent of clearing that mask,
      * without changing the XML or weakening restrictions for unrelated packages.
      */
-    private void startHookHansGmsRestriction() {
+    private void startHookHansGmsRestriction() throws NotApplicable {
         Class<?> configClass = XposedHelpers.findClassIfExists(OPLUS_HANS_DB_CONFIG, classLoader);
-        if (configClass == null) throw new NoClassDefFoundError(OPLUS_HANS_DB_CONFIG);
+        if (configClass == null) throw new NotApplicable("ColorOS 12.1 无 OplusHansDBConfig");
 
         int hooks = 0;
         for (Method method : configClass.getDeclaredMethods()) {
@@ -374,7 +369,7 @@ public class OplusGoogleServiceFix extends XposedModule {
             hooks++;
             printLog("Oplus Hans restriction hook active: " + describeMethod(method));
         }
-        if (hooks == 0) throw new NoSuchMethodError("isSysRestrictionCpn");
+        if (hooks == 0) throw new NotApplicable("ColorOS 12.1 无 isSysRestrictionCpn");
     }
 
     private int hookAllMethods(String className, String methodName, Object result) {

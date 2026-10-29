@@ -119,7 +119,8 @@ public class OplusProxyFix extends XposedModule {
             }
 
             for (Method method : proxyClass.getDeclaredMethods()) {
-                if (!"shouldProxy".equals(method.getName())) {
+                String methodName = method.getName();
+                if (!"shouldProxy".equals(methodName) && !"shouldProxyLocked".equals(methodName)) {
                     continue;
                 }
                 Object noProxyResult = HookResults.getNoProxyResult(method.getReturnType());
@@ -133,17 +134,32 @@ public class OplusProxyFix extends XposedModule {
                     @Override
                     protected void beforeHookedMethod(MethodHookParam param) {
                         Intent intent = findIntentArgument(param.args);
-                        if (intent == null || !isFCMAction(intent.getAction())) {
+                        String action = null;
+                        String target = null;
+                        if (intent != null) {
+                            action = intent.getAction();
+                            target = getIntentTarget(intent);
+                        } else {
+                            for (Object arg : param.args) {
+                                if (arg instanceof String) {
+                                    String str = (String) arg;
+                                    if (isFCMAction(str)) {
+                                        action = str;
+                                    } else if (targetIsAllow(str)) {
+                                        target = str;
+                                    }
+                                }
+                            }
+                        }
+                        if (action == null || !isFCMAction(action)) {
                             return;
                         }
-
-                        String target = getIntentTarget(intent);
                         if (target == null) {
                             target = findAllowedPackageArgument(param.args);
                         }
-                        if (trustedDelivery(intent, target, param)) {
+                        if (target != null && targetIsAllow(target)) {
                             printLog("Oplus shouldProxy bypass: pkg=" + target
-                                    + ", action=" + intent.getAction(), true);
+                                    + ", action=" + action, true);
                             param.setResult(finalNoProxyResult);
                         }
                     }
@@ -162,9 +178,9 @@ public class OplusProxyFix extends XposedModule {
      * targets. Its action list is loaded from cloud-updatable config, so exempt only a
      * BroadcastRecord-attributed GMS RECEIVE to an allowlisted target.
      */
-    private void startHookCpnProxyBroadcast() {
-        Class<?> actionClass = XposedHelpers.findClassIfExists(OPLUS_BROADCAST_PROXY_ACTION, classLoader);
-        if (actionClass == null) throw new NoClassDefFoundError(OPLUS_BROADCAST_PROXY_ACTION);
+    private void startHookCpnProxyBroadcast() throws NotApplicable {
+        Class<?> actionClass = XposedHelpers.findClassIfExists(BROADCAST_PROXY_ACTION, classLoader);
+        if (actionClass == null) throw new NotApplicable("ColorOS 12.1 无 BroadcastProxyAction");
 
         int hooks = 0;
         for (Method method : actionClass.getDeclaredMethods()) {
@@ -204,16 +220,23 @@ public class OplusProxyFix extends XposedModule {
 
         sUnfreezeMethod = findBestUnfreezeMethod(wakeLockClass);
         if (sUnfreezeMethod == null) {
-            throw new NoSuchMethodError(wakeLockClass.getName() + "#unfreezeIfNeed");
+            // ColorOS 12.1: 适配 unproxyWakeLock
+            for (Method method : wakeLockClass.getDeclaredMethods()) {
+                if ("unproxyWakeLock".equals(method.getName()) && method.getParameterTypes().length == 2) {
+                    sUnfreezeMethod = method;
+                    break;
+                }
+            }
         }
-        sUnfreezeMethod.setAccessible(true);
-        printLog("Oplus unfreeze method selected: " + describeMethod(sUnfreezeMethod));
+        if (sUnfreezeMethod != null) {
+            sUnfreezeMethod.setAccessible(true);
+            printLog("Oplus unfreeze method selected: " + describeMethod(sUnfreezeMethod));
+        }
 
-        if (Modifier.isStatic(sUnfreezeMethod.getModifiers())) {
+        if (sUnfreezeMethod != null && Modifier.isStatic(sUnfreezeMethod.getModifiers())) {
             return;
         }
 
-        int constructorHooks = 0;
         for (Constructor<?> constructor : wakeLockClass.getDeclaredConstructors()) {
             constructor.setAccessible(true);
             XposedBridge.hookMethod(constructor, new XC_MethodHook() {
@@ -223,10 +246,6 @@ public class OplusProxyFix extends XposedModule {
                     printLog("OplusProxyWakeLock instance captured");
                 }
             });
-            constructorHooks++;
-        }
-        if (constructorHooks == 0) {
-            throw new NoSuchMethodError(wakeLockClass.getName() + "#<init>");
         }
     }
 
@@ -252,6 +271,29 @@ public class OplusProxyFix extends XposedModule {
     }
 
     public static void unfreeze(String target) {
+        int uid = getTargetUidFromPackageName(target);
+        if (uid < 0) {
+            return;
+        }
+
+        // ColorOS 12.1 专配：通过 OplusHansManager 解冻唤醒锁
+        try {
+            Class<?> hansClass = XposedHelpers.findClassIfExists("com.android.server.am.OplusHansManager", XposedModule.classLoader);
+            if (hansClass != null) {
+                Method getInstance = hansClass.getDeclaredMethod("getInstance");
+                Object hans = getInstance.invoke(null);
+                if (hans != null) {
+                    Method unfreeze = XposedHelpers.findMethodExactIfExists(hansClass, "unFreezeForwl", int.class);
+                    if (unfreeze != null) {
+                        unfreeze.invoke(hans, uid);
+                        printLog("Hans unFreezeForwl " + target + ", uid=" + uid, true);
+                    }
+                }
+            }
+        } catch (Throwable e) {
+            printLog("Hans unFreezeForwl failed: " + e.getMessage());
+        }
+
         Method method = sUnfreezeMethod;
         if (method == null) {
             return;
@@ -261,9 +303,14 @@ public class OplusProxyFix extends XposedModule {
             return;
         }
 
-        int uid = getTargetUidFromPackageName(target);
-        if (uid < 0) {
-            return;
+        try {
+            if ("unproxyWakeLock".equals(method.getName())) {
+                method.invoke(receiver, 0, uid);
+                printLog("unproxyWakeLock " + target + ", uid=" + uid, true);
+                return;
+            }
+        } catch (Throwable e) {
+            printLog("unproxyWakeLock failed: " + e.getMessage());
         }
 
         Object[] args = UnfreezeArguments.create(method.getParameterTypes(), uid);

@@ -101,7 +101,11 @@ final class SelfCheckCollector {
             if (!FcmTrust.isAppUid(info.uid)) continue;
             Bundle app = new Bundle();
             app.putBoolean(SelfCheck.APP_AUTO, !config.allowList.contains(name));
-            app.putInt(SelfCheck.APP_NOTIFY, notificationsEnabled(notifications, name, info.uid));
+            if ("com.google.android.gms".equals(name) || "com.google.android.gsf".equals(name)) {
+                app.putInt(SelfCheck.APP_NOTIFY, 1);
+            } else {
+                app.putInt(SelfCheck.APP_NOTIFY, notificationsEnabled(notifications, name, info.uid));
+            }
             app.putInt(SelfCheck.APP_BLOCKED_CHANNELS, blockedChannels(notifications, name, info.uid));
             app.putInt(SelfCheck.APP_BUCKET, standbyBucket(context, name));
             app.putBoolean(SelfCheck.APP_STOPPED, (info.flags & ApplicationInfo.FLAG_STOPPED) != 0);

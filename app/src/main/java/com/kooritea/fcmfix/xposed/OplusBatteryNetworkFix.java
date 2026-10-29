@@ -54,9 +54,9 @@ public class OplusBatteryNetworkFix extends XposedModule {
      * builders. ColorOS 16 has no addPkgWhiteArray/addUidWhiteArray, and ColorOS 17's private
      * builders may be inlined. The system_server hook remains a second boundary check.
      */
-    private void startHookDeepSleepNetworkWhitelist() {
+    private void startHookDeepSleepNetworkWhitelist() throws NotApplicable {
         Class<?> managerClass = XposedHelpers.findClassIfExists(APP_NET_CONTROL_MANAGER, classLoader);
-        if (managerClass == null) throw new NoClassDefFoundError(APP_NET_CONTROL_MANAGER);
+        if (managerClass == null) throw new NotApplicable("ColorOS 12.1 电池无 OAppNetControlManager");
 
         int hooks = 0;
         for (Method method : managerClass.getDeclaredMethods()) {
@@ -83,7 +83,7 @@ public class OplusBatteryNetworkFix extends XposedModule {
             hooks++;
             printLog("Oplus Battery deep-sleep whitelist hook active: " + method);
         }
-        if (hooks == 0) throw new NoSuchMethodError(APP_NET_CONTROL_MANAGER + "#networkDisableWhiteList(List,int): int");
+        if (hooks == 0) throw new NotApplicable("ColorOS 12.1 电池无 networkDisableWhiteList");
     }
 
     /**

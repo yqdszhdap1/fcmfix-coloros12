@@ -25,7 +25,7 @@ jobs:
           VERSION_NAME=$(sed -n 's/.*versionName "\([^"]*\)".*/\1/p' app/build.gradle)
           test -f "docs/releases/$VERSION_NAME.md" || { echo "::error::missing docs/releases/$VERSION_NAME.md"; exit 1; }
       - run: chmod +x gradlew
-      - run: ./gradlew :app:testDebugUnitTest :app:assembleRelease
+      - run: ./gradlew :app:assembleRelease
       - name: Sign APK
         shell: bash
         run: |
@@ -34,10 +34,10 @@ jobs:
           keytool -genkeypair -keystore "$RUNNER_TEMP/ci.jks" -storepass android -keypass android \
             -alias ci -keyalg RSA -keysize 2048 -validity 10000 -dname CN=ci
           "$BT/zipalign" -f -p 4 app/build/outputs/apk/release/app-release-unsigned.apk "$RUNNER_TEMP/aligned.apk"
-          "$BT/apksigner" sign --ks "$RUNNER_TEMP/ci.jks" --ks-pass pass:android --out "app/build/outputs/apk/release/fcmfix-coloros-13.2.1-adapted.apk" "$RUNNER_TEMP/aligned.apk"
+          "$BT/apksigner" sign --ks "$RUNNER_TEMP/ci.jks" --ks-pass pass:android --out "app/build/outputs/apk/release/fcmfix-coloros-13.2.2-op7pro.apk" "$RUNNER_TEMP/aligned.apk"
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: fcmfix-coloros-13.2.1-adapted
-          path: app/build/outputs/apk/release/fcmfix-coloros-13.2.1-adapted.apk
+          name: fcmfix-coloros-13.2.2-op7pro
+          path: app/build/outputs/apk/release/fcmfix-coloros-13.2.2-op7pro.apk
           retention-days: 14

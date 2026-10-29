@@ -239,14 +239,14 @@ public class OplusStartupFix extends XposedModule {
     /** Older firmware without the policy class checks the list for activity starts only. */
     private void requireMaliciousPolicy() throws NotApplicable {
         if (XposedHelpers.findClassIfExists(OPLUS_MALICIOUS_RESTRICT_POLICY, classLoader) != null) return;
-        if (GoogleNetworkCompat.isActivityOnlyMaliciousCheck(
-                XposedHelpers.findClassIfExists(OPLUS_APP_STARTUP_MANAGER, classLoader))) {
-            throw new NotApplicable("固件的可疑组件名单只拦截 Activity 启动，不拦截广播和服务");
-        }
+        throw new NotApplicable("ColorOS 12.1 无 MaliciousRestrictPolicy 恶意组件检查");
     }
 
     /** Link-start limits count GMS as the launcher when it wakes many apps with FCM. */
-    private void startHookLinkStartBroadcast() {
+    private void startHookLinkStartBroadcast() throws NotApplicable {
+        if (XposedHelpers.findClassIfExists(OPLUS_LINK_START_MANAGER, classLoader) == null) {
+            throw new NotApplicable("ColorOS 12.1 无 OplusLinkStartManager 链式启动限制");
+        }
         hookTrustedBroadcastGate(OPLUS_LINK_START_MANAGER, "handleProcessBroadcastStartLocked",
                 false, OplusStartupFix::receiverPackage);
     }
