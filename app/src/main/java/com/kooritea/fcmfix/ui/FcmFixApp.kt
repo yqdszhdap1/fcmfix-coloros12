@@ -283,7 +283,6 @@ fun FcmFixScreen(
         contentWindowInsets = WindowInsets(0),
         snackbarHost = { SnackbarHost(snackbar) },
         bottomBar = {
-            val attention = remember(state) { appItems(state).count { it.attention } }
             NavigationBar {
                 NavigationBarItem(
                     selected = tab == Tab.STATUS,
@@ -300,9 +299,10 @@ fun FcmFixScreen(
                     selected = tab == Tab.APPS,
                     onClick = { tab = Tab.APPS },
                     icon = {
-                        BadgedBox(badge = { if (attention > 0) Badge { Text("$attention") } }) {
-                            Icon(painterResource(R.drawable.ic_nav_apps), contentDescription = null)
-                        }
+                        Icon(
+                            painterResource(if (tab == Tab.APPS) R.drawable.ic_nav_apps_filled else R.drawable.ic_nav_apps),
+                            contentDescription = null,
+                        )
                     },
                     label = { Text("应用") },
                 )
