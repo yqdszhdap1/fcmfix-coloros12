@@ -65,9 +65,11 @@ public class OplusProxyFix extends XposedModule {
 
     private static volatile Object sOplusProxyWakeLock;
     private static volatile Method sUnfreezeMethod;
+    private static volatile ClassLoader sClassLoader;
 
     public OplusProxyFix(ClassLoader classLoader) {
         super(classLoader);
+        sClassLoader = classLoader;
         runHook("OplusProxyWakeLock", this::startHookOplusProxyWakeLock);
         runHook("OplusProxyBroadcast", this::startHookOplusProxyBroadcast);
         runHook("OAppNetControlService", this::startHookOAppNetControlService);
@@ -278,13 +280,14 @@ public class OplusProxyFix extends XposedModule {
 
         // ColorOS 12.1 专配：通过 OplusHansManager 解冻唤醒锁
         try {
-            Class<?> hansClass = XposedHelpers.findClassIfExists("com.android.server.am.OplusHansManager", XposedModule.classLoader);
+            Class<?> hansClass = XposedHelpers.findClassIfExists("com.android.server.am.OplusHansManager", sClassLoader);
             if (hansClass != null) {
                 Method getInstance = hansClass.getDeclaredMethod("getInstance");
                 Object hans = getInstance.invoke(null);
                 if (hans != null) {
-                    Method unfreeze = XposedHelpers.findMethodExactIfExists(hansClass, "unFreezeForwl", int.class);
+                    Method unfreeze = hansClass.getDeclaredMethod("unFreezeForwl", int.class);
                     if (unfreeze != null) {
+                        unfreeze.setAccessible(true);
                         unfreeze.invoke(hans, uid);
                         printLog("Hans unFreezeForwl " + target + ", uid=" + uid, true);
                     }

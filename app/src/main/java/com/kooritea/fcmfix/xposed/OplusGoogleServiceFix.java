@@ -68,7 +68,7 @@ public class OplusGoogleServiceFix extends XposedModule {
      * CommonExternalClean with strategy 2 to the force-stop policy. The sampled ColorOS 16
      * Battery does not request this clean; the narrow guard is dormant on that build.
      */
-    private void startHookDeepSleepGmsForceStop() {
+    private void startHookDeepSleepGmsForceStop() throws NotApplicable {
         int hooks = 0;
         for (int i = 1; i <= 30 && hooks == 0; i++) {
             Class<?> clazz = XposedHelpers.findClassIfExists(OSENSE_RES_MANAGER_SERVICE + "$" + i, classLoader);
@@ -210,7 +210,7 @@ public class OplusGoogleServiceFix extends XposedModule {
      * (ERR_IO_RST_HB) and never retried after the restore. Add the GMS UID at the service
      * boundary, then ask GMS to reconnect once the network is back.
      */
-    private void startHookNightNetworkWhitelist() {
+    private void startHookNightNetworkWhitelist() throws NotApplicable {
         Class<?> serviceClass = XposedHelpers.findClassIfExists(OPLUS_APP_NET_CONTROL_SERVICE, classLoader);
         if (serviceClass == null) throw new NoClassDefFoundError(OPLUS_APP_NET_CONTROL_SERVICE);
 
