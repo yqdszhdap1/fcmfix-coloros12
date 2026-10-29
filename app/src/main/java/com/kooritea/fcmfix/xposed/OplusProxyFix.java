@@ -179,7 +179,7 @@ public class OplusProxyFix extends XposedModule {
      * BroadcastRecord-attributed GMS RECEIVE to an allowlisted target.
      */
     private void startHookCpnProxyBroadcast() throws NotApplicable {
-        Class<?> actionClass = XposedHelpers.findClassIfExists(BROADCAST_PROXY_ACTION, classLoader);
+        Class<?> actionClass = XposedHelpers.findClassIfExists(OPLUS_BROADCAST_PROXY_ACTION, classLoader);
         if (actionClass == null) throw new NotApplicable("ColorOS 12.1 无 BroadcastProxyAction");
 
         int hooks = 0;

@@ -12,6 +12,7 @@ import com.kooritea.fcmfix.util.NightNetworkWhitelist;
 import java.lang.reflect.Method;
 
 import static com.kooritea.fcmfix.xposed.OplusHooks.runHook;
+import static com.kooritea.fcmfix.xposed.OplusHooks.NotApplicable;
 
 /**
  * ColorOS Battery's GoogleRestrictionController applies POLICY_REJECT_ALL when its
