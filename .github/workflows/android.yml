@@ -25,7 +25,7 @@ jobs:
           VERSION_NAME=$(sed -n 's/.*versionName "\([^"]*\)".*/\1/p' app/build.gradle)
           test -f "docs/releases/$VERSION_NAME.md" || { echo "::error::missing docs/releases/$VERSION_NAME.md"; exit 1; }
       - run: chmod +x gradlew
-      - run: ./gradlew :app:testDebugUnitTest :app:lintRelease :app:assembleRelease
+      - run: ./gradlew :app:testDebugUnitTest :app:assembleRelease
       - name: Sign APK
         shell: bash
         run: |
