@@ -299,10 +299,7 @@ fun FcmFixScreen(
                     selected = tab == Tab.APPS,
                     onClick = { tab = Tab.APPS },
                     icon = {
-                        Icon(
-                            painterResource(if (tab == Tab.APPS) R.drawable.ic_nav_apps_filled else R.drawable.ic_nav_apps),
-                            contentDescription = null,
-                        )
+                        Icon(painterResource(R.drawable.ic_nav_apps), contentDescription = null)
                     },
                     label = { Text("应用") },
                 )
