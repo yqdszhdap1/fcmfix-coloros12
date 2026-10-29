@@ -24,11 +24,14 @@ object StatusQuery {
      * process answers, or on Android 13 and older.
      */
     suspend fun query(context: Context, extra: String = SelfCheck.EXTRA_CHECK): Bundle {
-        if (Build.VERSION.SDK_INT < 34) return Bundle()
         return withTimeoutOrNull(TIMEOUT_MS) {
             suspendCancellableCoroutine { continuation ->
                 val query = Intent(context.packageName + HookStatus.QUERY_ACTION_SUFFIX).putExtra(extra, true)
-                val options = BroadcastOptions.makeBasic().setShareIdentityEnabled(true).toBundle()
+                val options = if (Build.VERSION.SDK_INT >= 34) {
+                    BroadcastOptions.makeBasic().setShareIdentityEnabled(true).toBundle()
+                } else {
+                    null
+                }
                 val receiver = object : BroadcastReceiver() {
                     override fun onReceive(context: Context, intent: Intent) {
                         val extras = getResultExtras(false)

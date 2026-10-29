@@ -187,8 +187,8 @@ class StatusReport private constructor(
                 add(Level.OK, "LSPosed", "已激活 · " + module.framework, null)
                 addScopeRow(module)
             }
-            if (env.sdkInt < 34) {
-                add(Level.UNKNOWN, "系统检查", "需要 Android 14 及以上", null)
+            if (env.sdkInt < 31) {
+                add(Level.UNKNOWN, "系统检查", "需要 Android 12 及以上", null)
             } else {
                 for ((process, label) in StatusSnapshot.PROCESSES) addHookRow(process, label)
             }

@@ -77,11 +77,20 @@ object ConfigStore {
             .remove("noResponseNotification")
             .commit()
         check(saved) { "配置写入失败" }
-        if (Build.VERSION.SDK_INT < 34) return false
-        context.sendBroadcast(
-            Intent(context.packageName + ".update.config"), null,
-            BroadcastOptions.makeBasic().setShareIdentityEnabled(true).toBundle(),
-        )
+        val options = if (Build.VERSION.SDK_INT >= 34) {
+            BroadcastOptions.makeBasic().setShareIdentityEnabled(true).toBundle()
+        } else {
+            null
+        }
+        if (options != null) {
+            context.sendBroadcast(
+                Intent(context.packageName + ".update.config"), null, options
+            )
+        } else {
+            context.sendBroadcast(
+                Intent(context.packageName + ".update.config")
+            )
+        }
         return true
     }
 }

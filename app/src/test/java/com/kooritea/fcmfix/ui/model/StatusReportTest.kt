@@ -162,8 +162,8 @@ class StatusReportTest {
     }
 
     @Test
-    fun androidThirteenSkipsTheHookQuery() {
-        val rows = StatusReport.build(env(sdk = 33), StatusSnapshot()).rows
+    fun androidTenSkipsTheHookQuery() {
+        val rows = StatusReport.build(env(sdk = 30), StatusSnapshot()).rows
         val check = rows.single { it.title == "系统检查" }
         assertEquals(Level.UNKNOWN, check.level)
         assertNull(rows.firstOrNull { it.title.endsWith(" Hook") })

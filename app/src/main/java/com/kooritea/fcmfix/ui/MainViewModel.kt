@@ -259,7 +259,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application), A
         try {
             val live = ConfigStore.save(app, service, next)
             mutableConfig.value = next
-            if (!live) message("配置已保存；Android 14 以下需重启手机生效")
+            if (!live) message("配置已保存；若未生效需重启手机")
             refreshSoon()
         } catch (e: Throwable) {
             Log.e(TAG, "updateConfig", e)

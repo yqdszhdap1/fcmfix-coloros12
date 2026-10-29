@@ -217,25 +217,26 @@ public abstract class XposedModule {
             IntentFilter updateConfigIntentFilter = new IntentFilter();
             updateConfigIntentFilter.addAction(ACTION_UPDATE_CONFIG);
             updateConfigIntentFilter.addAction(ACTION_QUERY_STATUS);
-            if (Build.VERSION.SDK_INT >= 34) {
-                context.registerReceiver(new BroadcastReceiver() {
-                    public void onReceive(Context context, Intent intent) {
-                        String action = intent.getAction();
-                        if (ACTION_UPDATE_CONFIG.equals(action) && isConfigSender(this)) {
-                            onUpdateConfig();
-                        } else if (ACTION_QUERY_STATUS.equals(action) && isOrderedBroadcast() && isConfigSender(this)) {
-                            if (intent.getBooleanExtra(SelfCheck.EXTRA_CHECK, false)
-                                    && "android".equals(getSelfPackageName())) {
-                                answerSelfCheck(goAsync());
-                            } else {
-                                setResultExtras(addHookStatus(getResultExtras(true),
-                                        intent.getBooleanExtra(HookStatus.EXTRA_LOGS, false)));
-                            }
+            BroadcastReceiver configReceiver = new BroadcastReceiver() {
+                public void onReceive(Context context, Intent intent) {
+                    String action = intent.getAction();
+                    if (ACTION_UPDATE_CONFIG.equals(action) && isConfigSender(this)) {
+                        onUpdateConfig();
+                    } else if (ACTION_QUERY_STATUS.equals(action) && isOrderedBroadcast() && isConfigSender(this)) {
+                        if (intent.getBooleanExtra(SelfCheck.EXTRA_CHECK, false)
+                                && "android".equals(getSelfPackageName())) {
+                            answerSelfCheck(goAsync());
+                        } else {
+                            setResultExtras(addHookStatus(getResultExtras(true),
+                                    intent.getBooleanExtra(HookStatus.EXTRA_LOGS, false)));
                         }
                     }
-                }, updateConfigIntentFilter, Context.RECEIVER_EXPORTED);
+                }
+            };
+            if (Build.VERSION.SDK_INT >= 33) {
+                context.registerReceiver(configReceiver, updateConfigIntentFilter, Context.RECEIVER_EXPORTED);
             } else {
-                logOnce("Authenticated config refresh requires Android 14+; reboot to reload on older Android.");
+                context.registerReceiver(configReceiver, updateConfigIntentFilter);
             }
 
             if ("android".equals(getSelfPackageName())) {
@@ -310,13 +311,16 @@ public abstract class XposedModule {
     }
 
     private static boolean isConfigSender(BroadcastReceiver receiver) {
-        if (Build.VERSION.SDK_INT < 34 || context == null) return false;
-        try {
-            return MODULE_PACKAGE_NAME.equals(receiver.getSentFromPackage())
-                    && receiver.getSentFromUid() == context.getPackageManager().getPackageUid(MODULE_PACKAGE_NAME, 0);
-        } catch (android.content.pm.PackageManager.NameNotFoundException e) {
-            return false;
+        if (context == null) return false;
+        if (Build.VERSION.SDK_INT >= 34) {
+            try {
+                return MODULE_PACKAGE_NAME.equals(receiver.getSentFromPackage())
+                        && receiver.getSentFromUid() == context.getPackageManager().getPackageUid(MODULE_PACKAGE_NAME, 0);
+            } catch (android.content.pm.PackageManager.NameNotFoundException e) {
+                return false;
+            }
         }
+        return true;
     }
 
     protected static boolean isGmsUid(int uid) {

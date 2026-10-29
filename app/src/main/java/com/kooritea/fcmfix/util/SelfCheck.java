@@ -134,7 +134,7 @@ public final class SelfCheck {
         }
         if (remoteManual != localManual || remoteAuto != localAuto) {
             return new Verdict(Level.WARN, "系统框架的配置和这里不一致",
-                    "Android 14 以下修改配置后需要重启；其他情况请重新打开 FCMFix 再查一次");
+                    "修改配置后若未自动同步需重启生效；其他情况请重新打开 FCMFix 再查一次");
         }
         return new Verdict(Level.OK, "已同步", null);
     }
