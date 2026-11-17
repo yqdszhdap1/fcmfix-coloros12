@@ -131,7 +131,7 @@ final class OplusHooks {
     }
 
     /** UserManager#getUsers is a hidden API on some ColorOS builds; resolve it reflectively. */
-    private static int[] userIds() {
+    private static int[] userIds() throws Exception {
         Object userManager = XposedModule.context.getSystemService("user");
         if (userManager == null) throw new IllegalStateException("no UserManager");
         Method getUsers = userManager.getClass().getMethod("getUsers");
