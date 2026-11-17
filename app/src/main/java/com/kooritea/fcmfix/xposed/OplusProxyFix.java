@@ -273,10 +273,21 @@ public class OplusProxyFix extends XposedModule {
     }
 
     public static void unfreeze(String target) {
-        int uid = getTargetUidFromPackageName(target);
-        if (uid < 0) {
-            return;
+        unfreeze(target, -1);
+    }
+
+    /** @param userId target user, or -1 to unfreeze every install of the package. */
+    public static void unfreeze(String target, int userId) {
+        int[] uids = userId >= 0
+                ? new int[]{getTargetUidFromPackageName(target, userId)}
+                : getTargetUidsFromPackageName(target);
+        if (uids.length == 0) return;
+        for (int uid : uids) {
+            if (uid >= 0) unfreezeUid(target, uid);
         }
+    }
+
+    private static void unfreezeUid(String target, int uid) {
 
         // ColorOS 12.1 专配：通过 OplusHansManager 解冻唤醒锁
         try {
@@ -336,13 +347,32 @@ public class OplusProxyFix extends XposedModule {
     }
 
     public static void beginFcmDeliveryWindow(String target) {
-        int uid = getTargetUidFromPackageName(target);
-        if (uid < 0) return;
+        beginFcmDeliveryWindow(target, -1);
+    }
 
-        sFcmDeliveryWindows.begin(uid, SystemClock.elapsedRealtime());
-        sFcmDeliveryPackages.put(uid, target);
-        printLog("Oplus FCM delivery window: pkg=" + target + ", uid=" + uid
-                + ", duration=" + FCM_DELIVERY_WINDOW_MS + "ms", true);
+    /**
+     * @param userId user the broadcast is addressed to, or -1 to cover every install of the
+     *     package. ColorOS MultiApp delivers FCM to a clone user whose package shares the name
+     *     but not the UID; a window opened only for user 0 leaves the clone frozen, so the push
+     *     is dropped even though the broadcast did reach it.
+     */
+    public static void beginFcmDeliveryWindow(String target, int userId) {
+        int[] uids = userId >= 0
+                ? new int[]{getTargetUidFromPackageName(target, userId)}
+                : getTargetUidsFromPackageName(target);
+        long now = SystemClock.elapsedRealtime();
+        int opened = 0;
+        for (int uid : uids) {
+            if (uid < 0) continue;
+            sFcmDeliveryWindows.begin(uid, now);
+            sFcmDeliveryPackages.put(uid, target);
+            printLog("Oplus FCM delivery window: pkg=" + target + ", uid=" + uid
+                    + ", duration=" + FCM_DELIVERY_WINDOW_MS + "ms", true);
+            opened++;
+        }
+        if (opened == 0) {
+            printLog("Oplus FCM delivery window skipped: no uid for " + target);
+        }
     }
 
     static boolean isInFcmDeliveryWindow(int uid) {
