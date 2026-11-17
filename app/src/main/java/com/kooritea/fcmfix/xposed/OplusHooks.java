@@ -59,22 +59,19 @@ final class OplusHooks {
      */
     static int getTargetUidFromPackageName(String packageName, int userId) {
         if (packageName == null || XposedModule.context == null) return -1;
-        PackageManager pm = XposedModule.context.getPackageManager();
-        try {
-            int uid = pm.getPackageUidAsUser(packageName, userId);
+        int uid = packageUidAsUser(packageName, userId);
+        if (uid >= 0) {
             if (userId != 0) {
                 XposedModule.printLog("uid resolved for user " + userId + ": " + packageName + "=" + uid);
             }
             return uid;
-        } catch (Throwable e) {
-            if (userId != 0) {
-                XposedModule.printLog("error: Package not found: " + packageName
-                        + " (user " + userId + "): " + e);
-            }
+        }
+        if (userId != 0) {
+            XposedModule.printLog("error: Package not found: " + packageName + " (user " + userId + ")");
         }
         // Fall back to the primary user so a single-install target keeps working.
         try {
-            return pm.getPackageUid(packageName, 0);
+            return XposedModule.context.getPackageManager().getPackageUid(packageName, 0);
         } catch (PackageManager.NameNotFoundException e) {
             XposedModule.printLog("error: Package not found: " + packageName);
         } catch (Throwable e) {
@@ -84,38 +81,89 @@ final class OplusHooks {
     }
 
     /**
+     * PackageManager#getPackageUidAsUser is a hidden API, so it is resolved reflectively.
+     * Returns -1 when the package is not installed for that user.
+     */
+    private static int packageUidAsUser(String packageName, int userId) {
+        if (XposedModule.context == null) return -1;
+        try {
+            PackageManager pm = XposedModule.context.getPackageManager();
+            Method method = PackageManager.class.getMethod("getPackageUidAsUser", String.class, int.class);
+            Object result = method.invoke(pm, packageName, userId);
+            return result instanceof Integer ? (Integer) result : -1;
+        } catch (Throwable e) {
+            return -1;
+        }
+    }
+
+    /**
      * Every UID the package is installed under, primary user first. The FCM delivery window is
      * keyed by UID, so covering all installs keeps the clone working without having to recover
      * the broadcast's target user from the framework signature.
      */
     static int[] getTargetUidsFromPackageName(String packageName) {
         if (packageName == null || XposedModule.context == null) return new int[0];
-        PackageManager pm = XposedModule.context.getPackageManager();
         java.util.LinkedHashSet<Integer> uids = new java.util.LinkedHashSet<>();
+        // Primary user first so single-install targets keep their previous behaviour.
+        int primary = packageUidAsUser(packageName, 0);
+        if (primary >= 0) uids.add(primary);
         try {
-            int primary = pm.getPackageUid(packageName, 0);
-            uids.add(primary);
-        } catch (Throwable ignored) {
-            // Not installed for user 0; other users are still worth checking.
-        }
-        try {
-            for (android.content.pm.UserInfo user : ((android.os.UserManager)
-                    XposedModule.context.getSystemService(android.content.Context.USER_SERVICE))
-                    .getUsers()) {
-                if (user.id == 0) continue;
-                try {
-                    uids.add(pm.getPackageUidAsUser(packageName, user.id));
-                } catch (Throwable ignored) {
-                    // Not installed for this user.
-                }
+            int[] userIds = userIds();
+            for (int userId : userIds) {
+                if (userId == 0) continue;
+                int uid = packageUidAsUser(packageName, userId);
+                if (uid >= 0) uids.add(uid);
             }
         } catch (Throwable e) {
             XposedModule.printLog("error: user enumeration failed for " + packageName + ": " + e);
+        }
+        if (uids.isEmpty()) {
+            try {
+                uids.add(XposedModule.context.getPackageManager().getPackageUid(packageName, 0));
+            } catch (Throwable ignored) {
+                return new int[0];
+            }
         }
         int[] result = new int[uids.size()];
         int i = 0;
         for (int uid : uids) result[i++] = uid;
         return result;
+    }
+
+    /** UserManager#getUsers is a hidden API on some ColorOS builds; resolve it reflectively. */
+    private static int[] userIds() {
+        Object userManager = XposedModule.context.getSystemService("user");
+        if (userManager == null) throw new IllegalStateException("no UserManager");
+        Method getUsers = userManager.getClass().getMethod("getUsers");
+        Object users = getUsers.invoke(userManager);
+        java.util.List<Integer> ids = new java.util.ArrayList<>();
+        if (users instanceof Iterable) {
+            for (Object user : (Iterable<?>) users) {
+                Integer id = userIdOf(user);
+                if (id != null && !ids.contains(id)) ids.add(id);
+            }
+        }
+        int[] result = new int[ids.size()];
+        for (int i = 0; i < ids.size(); i++) result[i] = ids.get(i);
+        return result;
+    }
+
+    private static Integer userIdOf(Object userInfo) {
+        try {
+            Object id = userInfo.getClass().getField("id").get(userInfo);
+            if (id instanceof Integer) return (Integer) id;
+        } catch (Throwable ignored) {
+            // Fall through to the accessor.
+        }
+        try {
+            Object handle = userInfo.getClass().getMethod("getUserHandle").invoke(userInfo);
+            if (handle instanceof android.os.UserHandle) {
+                return ((android.os.UserHandle) handle).getIdentifier();
+            }
+        } catch (Throwable ignored) {
+            // Unknown user shape; skip it.
+        }
+        return null;
     }
 
     static String getIntentTarget(Intent intent) {
