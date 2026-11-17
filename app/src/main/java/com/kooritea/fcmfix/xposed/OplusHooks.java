@@ -155,10 +155,12 @@ final class OplusHooks {
         } catch (Throwable ignored) {
             // Fall through to the accessor.
         }
+        // UserHandle#getIdentifier is hidden on some releases; call it reflectively.
         try {
             Object handle = userInfo.getClass().getMethod("getUserHandle").invoke(userInfo);
-            if (handle instanceof android.os.UserHandle) {
-                return ((android.os.UserHandle) handle).getIdentifier();
+            if (handle != null) {
+                Object id = handle.getClass().getMethod("getIdentifier").invoke(handle);
+                if (id instanceof Integer) return (Integer) id;
             }
         } catch (Throwable ignored) {
             // Unknown user shape; skip it.
